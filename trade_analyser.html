@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trade Analyser</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+  <script crossorigin src="https://unpkg.com/recharts@2.15.3/umd/Recharts.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; }
+    body { font-family: 'DM Sans', sans-serif; background: #0f172a; color: #e2e8f0; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    button { font-family: inherit; cursor: pointer; transition: opacity 0.15s; }
+    button:hover { opacity: 0.85; }
+
+    /* Connect screen */
+    .connect-box { max-width: 560px; margin: 60px auto; padding: 32px; background: #1e293b; border-radius: 12px; border: 1px solid #334155; display: flex; flex-direction: column; align-items: center; }
+    .connect-title { font-size: 28px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.5px; }
+    .connect-sub { color: #94a3b8; font-size: 14px; margin-top: 4px; }
+    .mode-row { display: flex; gap: 8px; margin-top: 24px; }
+    .mode-btn { padding: 6px 16px; border-radius: 6px; border: 1px solid #334155; background: transparent; color: #94a3b8; font-size: 13px; }
+    .mode-btn.active { background: #334155; color: #e2e8f0; }
+    .input-area { margin-top: 16px; width: 100%; }
+    .input-area input, .input-area textarea { width: 100%; padding: 10px 14px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; font-size: 13px; outline: none; box-sizing: border-box; font-family: inherit; }
+    .input-area textarea { height: 160px; font-family: 'JetBrains Mono', monospace; font-size: 11px; resize: vertical; }
+    .primary-btn { width: 100%; margin-top: 10px; padding: 10px 0; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; }
+    .paste-hint { color: #64748b; font-size: 12px; margin-bottom: 8px; }
+    .error-msg { color: #ef4444; font-size: 13px; margin-top: 8px; text-align: center; }
+    .success-msg { color: #22c55e; font-size: 13px; margin-top: 8px; }
+    .connect-help { color: #64748b; font-size: 12px; margin-top: 20px; line-height: 1.7; text-align: center; }
+    .connect-help code { background: #334155; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .connect-help strong { color: #94a3b8; }
+
+    /* Header & tabs */
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid #1e293b; }
+    .header-title { font-size: 22px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.5px; }
+    .header-count { color: #64748b; font-size: 13px; margin-left: 12px; }
+    .ghost-btn { background: transparent; border: 1px solid #334155; color: #94a3b8; border-radius: 6px; padding: 6px 14px; font-size: 12px; }
+    .tab-bar { display: flex; gap: 0; border-bottom: 1px solid #1e293b; padding: 0 24px; overflow-x: auto; }
+    .tab { padding: 10px 20px; border: none; border-bottom: 2px solid transparent; background: transparent; color: #64748b; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .tab.active { color: #e2e8f0; border-bottom-color: #3b82f6; }
+
+    /* Content */
+    .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .empty { color: #64748b; text-align: center; padding: 40px; }
+
+    /* KPIs */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .kpi { background: #1e293b; border-radius: 8px; padding: 16px 18px; border: 1px solid #334155; }
+    .kpi-label { color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .kpi-value { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+    .kpi-sub { color: #64748b; font-size: 11px; margin-top: 2px; }
+
+    /* Charts */
+    .chart-card { background: #1e293b; border-radius: 8px; padding: 20px; border: 1px solid #334155; margin-bottom: 16px; }
+    .chart-title { color: #e2e8f0; font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .chart-sub { color: #64748b; font-size: 12px; margin-bottom: 8px; }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #334155; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 14px; background: #1e293b; color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #334155; white-space: nowrap; cursor: pointer; user-select: none; }
+    td { padding: 8px 14px; border-bottom: 1px solid #1e293b; white-space: nowrap; }
+    tr.even { background: #0f172a; }
+    tr.odd { background: #131c30; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .ticker-cell { font-weight: 700; color: #e2e8f0; }
+    .company-cell { color: #94a3b8; font-size: 12px; }
+    .date-cell { color: #94a3b8; }
+    .pnl-cell { font-weight: 600; }
+    .tickers-cell { color: #94a3b8; font-size: 11px; white-space: normal; max-width: 300px; }
+    .table-footer { color: #64748b; font-size: 12px; margin-top: 8px; text-align: right; }
+    .table-footer .mono { color: #e2e8f0; }
+
+    /* Brokerage */
+    .brokerage-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 12px; }
+    .brok-label { color: #64748b; font-size: 12px; }
+    .brok-value { color: #f59e0b; font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .brok-warn { color: #ef4444; font-size: 11px; }
+
+    /* Recharts tooltip fix */
+    .recharts-tooltip-wrapper { outline: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+/* global React, ReactDOM, Recharts */
+const {
+  useState,
+  useMemo,
+  useCallback
+} = React;
+const {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  ScatterChart,
+  Scatter,
+  Cell,
+  Line,
+  CartesianGrid,
+  ComposedChart
+} = Recharts;
+
+// ================================================================
+//  SMART CSV/TSV PARSER
+// ================================================================
+function parseSpreadsheetData(text) {
+  if (!text || !text.trim()) return [];
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const firstLine = lines[0];
+  const tabCount = (firstLine.match(/\t/g) || []).length;
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  const delimiter = tabCount >= commaCount ? "\t" : ",";
+  function splitLine(line) {
+    const fields = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === delimiter && !inQuotes) {
+        fields.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    fields.push(current.trim());
+    return fields;
+  }
+  const header = splitLine(lines[0]).map(h => h.replace(/"/g, "").trim().toLowerCase());
+  const colMap = {};
+  const patterns = {
+    date: /date|settlement/i,
+    direction: /direction|side|action|type/i,
+    ticker: /ticker|symbol|code|stock/i,
+    company: /company|name|security/i,
+    units: /units|quantity|shares|volume/i,
+    price: /price.*unit|unit.*price|price/i,
+    gross: /gross/i,
+    settlement: /total.*settlement|settlement.*amount/i,
+    brokerage: /brokerage|commission|fee/i,
+    account: /account/i
+  };
+  for (const [field, regex] of Object.entries(patterns)) {
+    const idx = header.findIndex(h => regex.test(h));
+    if (idx !== -1) colMap[field] = idx;
+  }
+  const usePositional = Object.keys(colMap).length < 5;
+  const trades = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const fields = splitLine(lines[i]);
+    if (fields.length < 6) continue;
+    let date, direction, ticker, company, units, price, gross, settlement, brokerage, account;
+    if (usePositional) {
+      date = fields[0] || "";
+      direction = (fields[1] || "").toUpperCase();
+      ticker = (fields[2] || "").toUpperCase();
+      company = fields[3] || "";
+      units = parseFloat((fields[4] || "0").replace(/[$,]/g, "")) || 0;
+      price = parseFloat((fields[5] || "0").replace(/[$,]/g, "")) || 0;
+      gross = parseFloat((fields[6] || "0").replace(/[$,]/g, "")) || 0;
+      settlement = parseFloat((fields[7] || "0").replace(/[$,]/g, "")) || null;
+      brokerage = parseFloat((fields[8] || "0").replace(/[$,]/g, "")) || 0;
+      account = fields[9] || "";
+    } else {
+      const get = field => colMap[field] != null && fields[colMap[field]] ? fields[colMap[field]] : "";
+      date = get("date");
+      direction = get("direction").toUpperCase();
+      ticker = get("ticker").toUpperCase();
+      company = get("company");
+      units = parseFloat(get("units").replace(/[$,]/g, "")) || 0;
+      price = parseFloat(get("price").replace(/[$,]/g, "")) || 0;
+      gross = parseFloat(get("gross").replace(/[$,]/g, "")) || 0;
+      settlement = parseFloat(get("settlement").replace(/[$,]/g, "")) || null;
+      brokerage = parseFloat(get("brokerage").replace(/[$,]/g, "")) || 0;
+      account = get("account");
+    }
+    if (!direction || !ticker || units <= 0 || price <= 0) continue;
+    if (direction !== "BOUGHT" && direction !== "SOLD") continue;
+    if (!gross || gross === 0) gross = units * price;
+    trades.push({
+      date,
+      direction,
+      ticker,
+      company,
+      units,
+      price,
+      gross,
+      settlement,
+      brokerage,
+      account
+    });
+  }
+  return trades;
+}
+
+// ================================================================
+//  FIFO ENGINE
+// ================================================================
+function runFIFO(trades) {
+  if (!trades || trades.length === 0) return {
+    openPositions: [],
+    closedTrades: [],
+    tickerStats: {},
+    monthlyPnL: [],
+    monthlyActivity: []
+  };
+  const sorted = [...trades].sort((a, b) => {
+    const da = new Date(a.date),
+      db = new Date(b.date);
+    if (isNaN(da.getTime()) && isNaN(db.getTime())) return 0;
+    if (isNaN(da.getTime())) return 1;
+    if (isNaN(db.getTime())) return -1;
+    return da - db;
+  });
+  const holdings = {};
+  const closed = [];
+  for (const t of sorted) {
+    const tk = t.ticker;
+    if (!holdings[tk]) holdings[tk] = {
+      company: t.company,
+      lots: []
+    };
+    if (t.direction === "BOUGHT") {
+      holdings[tk].lots.push({
+        date: t.date,
+        units: t.units,
+        price: t.price,
+        brokerage: t.brokerage,
+        remaining: t.units
+      });
+    } else if (t.direction === "SOLD") {
+      let remaining = t.units;
+      const brokeragePerUnit = t.units > 0 ? t.brokerage / t.units : 0;
+      while (remaining > 0 && holdings[tk].lots.length > 0) {
+        const lot = holdings[tk].lots[0];
+        const filled = Math.min(remaining, lot.remaining);
+        const buyBrokPerUnit = lot.units > 0 ? lot.brokerage / lot.units : 0;
+        const totalBrokerage = (buyBrokPerUnit + brokeragePerUnit) * filled;
+        const pnl = (t.price - lot.price) * filled - totalBrokerage;
+        const buyDate = new Date(lot.date);
+        const sellDate = new Date(t.date);
+        const holdingDays = !isNaN(buyDate) && !isNaN(sellDate) ? Math.max(0, Math.round((sellDate - buyDate) / 86400000)) : 0;
+        closed.push({
+          ticker: tk,
+          company: holdings[tk].company,
+          buyDate: lot.date,
+          sellDate: t.date,
+          units: filled,
+          buyPrice: lot.price,
+          sellPrice: t.price,
+          grossPnL: (t.price - lot.price) * filled,
+          brokerage: Math.round(totalBrokerage * 100) / 100,
+          netPnL: Math.round(pnl * 100) / 100,
+          holdingDays,
+          returnPct: lot.price > 0 ? Math.round((t.price - lot.price) / lot.price * 10000) / 100 : 0
+        });
+        lot.remaining -= filled;
+        remaining -= filled;
+        if (lot.remaining <= 0) holdings[tk].lots.shift();
+      }
+    }
+  }
+  const openPositions = [];
+  for (const [ticker, h] of Object.entries(holdings)) {
+    const totalUnits = h.lots.reduce((s, l) => s + l.remaining, 0);
+    if (totalUnits <= 0) continue;
+    const totalCost = h.lots.reduce((s, l) => s + l.remaining * l.price, 0);
+    const totalBrok = h.lots.reduce((s, l) => s + (l.units > 0 ? l.remaining / l.units * l.brokerage : 0), 0);
+    openPositions.push({
+      ticker,
+      company: h.company,
+      units: totalUnits,
+      avgCost: Math.round(totalCost / totalUnits * 10000) / 10000,
+      totalCost: Math.round(totalCost * 100) / 100,
+      brokerage: Math.round(totalBrok * 100) / 100,
+      lotCount: h.lots.length,
+      firstBuy: h.lots[0]?.date || ""
+    });
+  }
+  openPositions.sort((a, b) => b.totalCost - a.totalCost);
+  const tickerStats = {};
+  for (const c of closed) {
+    if (!tickerStats[c.ticker]) {
+      tickerStats[c.ticker] = {
+        ticker: c.ticker,
+        company: c.company,
+        trades: 0,
+        wins: 0,
+        losses: 0,
+        totalPnL: 0,
+        totalBrokerage: 0,
+        totalHoldingDays: 0,
+        totalUnits: 0
+      };
+    }
+    const ts = tickerStats[c.ticker];
+    ts.trades++;
+    ts.totalPnL += c.netPnL;
+    ts.totalBrokerage += c.brokerage;
+    ts.totalHoldingDays += c.holdingDays;
+    ts.totalUnits += c.units;
+    if (c.netPnL > 0) ts.wins++;else ts.losses++;
+  }
+  const monthlyMap = {};
+  for (const c of closed) {
+    const m = c.sellDate && c.sellDate.length >= 7 ? c.sellDate.substring(0, 7) : null;
+    if (!m) continue;
+    if (!monthlyMap[m]) monthlyMap[m] = {
+      month: m,
+      realizedPnL: 0,
+      brokerage: 0,
+      trades: 0,
+      wins: 0
+    };
+    monthlyMap[m].realizedPnL += c.netPnL;
+    monthlyMap[m].brokerage += c.brokerage;
+    monthlyMap[m].trades++;
+    if (c.netPnL > 0) monthlyMap[m].wins++;
+  }
+  const monthlyPnL = Object.values(monthlyMap).sort((a, b) => a.month.localeCompare(b.month));
+  let cum = 0;
+  for (const m of monthlyPnL) {
+    m.realizedPnL = Math.round(m.realizedPnL * 100) / 100;
+    m.brokerage = Math.round(m.brokerage * 100) / 100;
+    cum += m.realizedPnL;
+    m.cumulative = Math.round(cum * 100) / 100;
+    m.winRate = m.trades > 0 ? Math.round(m.wins / m.trades * 100) : 0;
+  }
+  const activityMap = {};
+  for (const t of sorted) {
+    const m = t.date && t.date.length >= 7 ? t.date.substring(0, 7) : null;
+    if (!m) continue;
+    if (!activityMap[m]) activityMap[m] = {
+      month: m,
+      buys: 0,
+      sells: 0,
+      buyValue: 0,
+      sellValue: 0,
+      brokerage: 0,
+      tickers: new Set()
+    };
+    activityMap[m].tickers.add(t.ticker);
+    activityMap[m].brokerage += t.brokerage || 0;
+    if (t.direction === "BOUGHT") {
+      activityMap[m].buys++;
+      activityMap[m].buyValue += t.settlement || t.gross;
+    } else {
+      activityMap[m].sells++;
+      activityMap[m].sellValue += t.settlement || t.gross;
+    }
+  }
+  const monthlyActivity = Object.values(activityMap).sort((a, b) => a.month.localeCompare(b.month)).map(m => ({
+    ...m,
+    totalTrades: m.buys + m.sells,
+    uniqueTickers: m.tickers.size,
+    tickers: Array.from(m.tickers).sort().join(", ")
+  }));
+  return {
+    openPositions,
+    closedTrades: closed,
+    tickerStats,
+    monthlyPnL,
+    monthlyActivity
+  };
+}
+
+// ================================================================
+//  FORMATTING
+// ================================================================
+const fmt = (v, dec = 2) => {
+  if (v == null || isNaN(v)) return "\u2014";
+  const sign = v < 0 ? "-" : "";
+  return sign + "$" + Math.abs(v).toLocaleString("en-US", {
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec
+  });
+};
+const fmtPct = v => v == null || isNaN(v) ? "\u2014" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+const fmtNum = v => v == null || isNaN(v) ? "\u2014" : v.toLocaleString("en-US");
+const pnlColor = v => v > 0 ? "#22c55e" : v < 0 ? "#ef4444" : "#94a3b8";
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmtMonth = v => {
+  if (!v || v.length < 7) return v || "";
+  const parts = v.split("-");
+  return MONTH_NAMES[parseInt(parts[1]) - 1] + " " + parts[0].slice(2);
+};
+
+// ================================================================
+//  KPI CARD
+// ================================================================
+function KPI({
+  label,
+  value,
+  sub,
+  color
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "kpi"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-label"
+  }, label), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-value",
+    style: {
+      color: color || "#e2e8f0"
+    }
+  }, value), sub && /*#__PURE__*/React.createElement("div", {
+    className: "kpi-sub"
+  }, sub));
+}
+
+// ================================================================
+//  SORTABLE TABLE HEADER
+// ================================================================
+function SortTh({
+  k,
+  label,
+  sortConfig,
+  onSort
+}) {
+  const icon = sortConfig.key === k ? sortConfig.dir === "asc" ? " \u2191" : " \u2193" : "";
+  return /*#__PURE__*/React.createElement("th", {
+    onClick: () => onSort(k)
+  }, label, icon);
+}
+
+// ================================================================
+//  MAIN DASHBOARD
+// ================================================================
+function TradeDashboard() {
+  const [webAppUrl, setWebAppUrl] = useState("");
+  const [rawTrades, setRawTrades] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [parseInfo, setParseInfo] = useState("");
+  const [tab, setTab] = useState("overview");
+  const [csvInput, setCsvInput] = useState("");
+  const [inputMode, setInputMode] = useState("url");
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    dir: "desc"
+  });
+  const fetchFromUrl = useCallback(async () => {
+    if (!webAppUrl.trim()) return;
+    setLoading(true);
+    setError("");
+    setParseInfo("");
+    try {
+      const res = await fetch(webAppUrl.trim());
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const trades = data.trades || data;
+      if (!Array.isArray(trades)) throw new Error("Unexpected response format");
+      setRawTrades(trades);
+      const buys = trades.filter(t => t.direction === "BOUGHT").length;
+      const sells = trades.filter(t => t.direction === "SOLD").length;
+      setParseInfo("Loaded " + trades.length + " trades (" + buys + " buys, " + sells + " sells)");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [webAppUrl]);
+  const loadPasted = useCallback(() => {
+    if (!csvInput.trim()) return;
+    setError("");
+    setParseInfo("");
+    try {
+      const trades = parseSpreadsheetData(csvInput);
+      if (trades.length === 0) throw new Error("No valid trade rows found. Include the header row.");
+      const buys = trades.filter(t => t.direction === "BOUGHT").length;
+      const sells = trades.filter(t => t.direction === "SOLD").length;
+      setParseInfo("Parsed " + trades.length + " trades (" + buys + " buys, " + sells + " sells)");
+      setRawTrades(trades);
+    } catch (e) {
+      setError("Parse error: " + e.message);
+    }
+  }, [csvInput]);
+  const analysis = useMemo(() => runFIFO(rawTrades), [rawTrades]);
+  const stats = useMemo(() => {
+    if (rawTrades.length === 0) return null;
+    const totalBrokerage = rawTrades.reduce((s, t) => s + (t.brokerage || 0), 0);
+    const totalBuyValue = rawTrades.filter(t => t.direction === "BOUGHT").reduce((s, t) => s + t.gross, 0);
+    const totalSellValue = rawTrades.filter(t => t.direction === "SOLD").reduce((s, t) => s + t.gross, 0);
+    const totalRealizedPnL = analysis.closedTrades.reduce((s, c) => s + c.netPnL, 0);
+    const wins = analysis.closedTrades.filter(c => c.netPnL > 0).length;
+    const total = analysis.closedTrades.length;
+    const avgHold = total > 0 ? analysis.closedTrades.reduce((s, c) => s + c.holdingDays, 0) / total : 0;
+    const avgWin = wins > 0 ? analysis.closedTrades.filter(c => c.netPnL > 0).reduce((s, c) => s + c.netPnL, 0) / wins : 0;
+    const losses = total - wins;
+    const avgLoss = losses > 0 ? analysis.closedTrades.filter(c => c.netPnL <= 0).reduce((s, c) => s + c.netPnL, 0) / losses : 0;
+    const expectancy = total > 0 ? wins / total * avgWin + losses / total * avgLoss : 0;
+    const openCost = analysis.openPositions.reduce((s, p) => s + p.totalCost, 0);
+    const brokerageOfGross = totalBuyValue + totalSellValue > 0 ? totalBrokerage / (totalBuyValue + totalSellValue) * 100 : 0;
+    return {
+      totalTrades: rawTrades.length,
+      totalBrokerage,
+      totalBuyValue,
+      totalSellValue,
+      totalRealizedPnL,
+      winRate: total > 0 ? wins / total * 100 : 0,
+      avgHold,
+      avgWin,
+      avgLoss,
+      expectancy,
+      openPositions: analysis.openPositions.length,
+      openCost,
+      brokerageOfGross,
+      closedCount: total,
+      buyCount: rawTrades.filter(t => t.direction === "BOUGHT").length,
+      sellCount: rawTrades.filter(t => t.direction === "SOLD").length
+    };
+  }, [rawTrades, analysis]);
+  const doSort = (data, overrideKey) => {
+    const key = sortConfig.key || overrideKey;
+    if (!key) return data;
+    return [...data].sort((a, b) => {
+      const av = a[key],
+        bv = b[key];
+      if (typeof av === "number" && typeof bv === "number") return sortConfig.dir === "asc" ? av - bv : bv - av;
+      return sortConfig.dir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+  };
+  const onSort = key => setSortConfig(prev => ({
+    key,
+    dir: prev.key === key && prev.dir === "desc" ? "asc" : "desc"
+  }));
+  const isConnected = rawTrades.length > 0;
+
+  // ============== CONNECTION SCREEN ==============
+  if (!isConnected) {
+    return /*#__PURE__*/React.createElement("div", {
+      id: "app"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "connect-box"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "connect-title"
+    }, "Trade Analyser"), /*#__PURE__*/React.createElement("div", {
+      className: "connect-sub"
+    }, "Connect your Google Sheet to start analysing"), /*#__PURE__*/React.createElement("div", {
+      className: "mode-row"
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "mode-btn" + (inputMode === "url" ? " active" : ""),
+      onClick: () => setInputMode("url")
+    }, "Web App URL"), /*#__PURE__*/React.createElement("button", {
+      className: "mode-btn" + (inputMode === "paste" ? " active" : ""),
+      onClick: () => setInputMode("paste")
+    }, "Paste from Sheet")), inputMode === "url" ? /*#__PURE__*/React.createElement("div", {
+      className: "input-area"
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      placeholder: "https://script.google.com/macros/s/.../exec",
+      value: webAppUrl,
+      onChange: e => setWebAppUrl(e.target.value),
+      onKeyDown: e => e.key === "Enter" && fetchFromUrl()
+    }), /*#__PURE__*/React.createElement("button", {
+      className: "primary-btn",
+      onClick: fetchFromUrl,
+      disabled: loading
+    }, loading ? "Fetching\u2026" : "Connect & Load")) : /*#__PURE__*/React.createElement("div", {
+      className: "input-area"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "paste-hint"
+    }, "Open Trades sheet \u2192 Select all (Ctrl+A) \u2192 Copy (Ctrl+C) \u2192 Paste below"), /*#__PURE__*/React.createElement("textarea", {
+      rows: "8",
+      placeholder: "Settlement Date\tDirection\tTicker\tCompany Name\tUnits\tPrice/Unit\tGross Amount\tTotal Settlement\tBrokerage\tAccount\n2026-03-20\tBOUGHT\tWAF\tWEST AFRICAN RESOURCES\t5000\t2.93\t14650\t14679.95\t29.95\t****874\n2026-03-22\tSOLD\tWAF\tWEST AFRICAN RESOURCES\t5000\t3.10\t15500\t15470.05\t29.95\t****874",
+      value: csvInput,
+      onChange: e => setCsvInput(e.target.value)
+    }), /*#__PURE__*/React.createElement("button", {
+      className: "primary-btn",
+      onClick: loadPasted
+    }, "Parse & Load")), error && /*#__PURE__*/React.createElement("div", {
+      className: "error-msg"
+    }, error), parseInfo && /*#__PURE__*/React.createElement("div", {
+      className: "success-msg"
+    }, parseInfo), /*#__PURE__*/React.createElement("div", {
+      className: "connect-help"
+    }, /*#__PURE__*/React.createElement("strong", null, "For live API:"), " Add ", /*#__PURE__*/React.createElement("code", null, "doGet()"), " to your Apps Script \u2192 Deploy as Web App \u2192 Paste URL above")));
+  }
+
+  // ============== COMPUTED DATA ==============
+  const TABS = [{
+    id: "overview",
+    label: "Overview"
+  }, {
+    id: "positions",
+    label: "Positions (" + analysis.openPositions.length + ")"
+  }, {
+    id: "closed",
+    label: "Closed P&L (" + analysis.closedTrades.length + ")"
+  }, {
+    id: "analytics",
+    label: "Analytics"
+  }, {
+    id: "activity",
+    label: "Activity"
+  }];
+  const tickerStatsArr = Object.values(analysis.tickerStats).map(ts => ({
+    ...ts,
+    winRate: ts.trades > 0 ? Math.round(ts.wins / ts.trades * 100) : 0,
+    avgPnL: ts.trades > 0 ? Math.round(ts.totalPnL / ts.trades * 100) / 100 : 0,
+    avgHold: ts.trades > 0 ? Math.round(ts.totalHoldingDays / ts.trades) : 0,
+    totalPnL: Math.round(ts.totalPnL * 100) / 100
+  })).sort((a, b) => b.totalPnL - a.totalPnL);
+  const holdingScatter = analysis.closedTrades.map(c => ({
+    holdingDays: c.holdingDays,
+    returnPct: c.returnPct,
+    ticker: c.ticker,
+    netPnL: c.netPnL,
+    units: c.units
+  }));
+  const sizeBuckets = (() => {
+    const b = {
+      "<$1k": [],
+      "$1k-5k": [],
+      "$5k-15k": [],
+      "$15k-50k": [],
+      ">$50k": []
+    };
+    for (const c of analysis.closedTrades) {
+      const cost = c.buyPrice * c.units;
+      if (cost < 1000) b["<$1k"].push(c);else if (cost < 5000) b["$1k-5k"].push(c);else if (cost < 15000) b["$5k-15k"].push(c);else if (cost < 50000) b["$15k-50k"].push(c);else b[">$50k"].push(c);
+    }
+    return Object.entries(b).map(([label, trades]) => {
+      const wins = trades.filter(t => t.netPnL > 0).length;
+      return {
+        label,
+        count: trades.length,
+        winRate: trades.length > 0 ? Math.round(wins / trades.length * 100) : 0,
+        avgReturn: trades.length > 0 ? Math.round(trades.reduce((s, t) => s + t.returnPct, 0) / trades.length * 100) / 100 : 0,
+        totalPnL: Math.round(trades.reduce((s, t) => s + t.netPnL, 0) * 100) / 100
+      };
+    }).filter(x => x.count > 0);
+  })();
+
+  // ============== MAIN DASHBOARD ==============
+  return /*#__PURE__*/React.createElement("div", {
+    id: "app"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "header"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    className: "header-title"
+  }, "Trade Analyser"), /*#__PURE__*/React.createElement("span", {
+    className: "header-count"
+  }, fmtNum(rawTrades.length), " trades (", stats.buyCount, " buys, ", stats.sellCount, " sells)")), /*#__PURE__*/React.createElement("button", {
+    className: "ghost-btn",
+    onClick: () => {
+      setRawTrades([]);
+      setError("");
+      setParseInfo("");
+    }
+  }, "Disconnect")), /*#__PURE__*/React.createElement("div", {
+    className: "tab-bar"
+  }, TABS.map(t => /*#__PURE__*/React.createElement("button", {
+    key: t.id,
+    className: "tab" + (tab === t.id ? " active" : ""),
+    onClick: () => {
+      setTab(t.id);
+      setSortConfig({
+        key: null,
+        dir: "desc"
+      });
+    }
+  }, t.label))), tab === "overview" && stats && /*#__PURE__*/React.createElement("div", {
+    className: "content"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-row"
+  }, /*#__PURE__*/React.createElement(KPI, {
+    label: "Realized P&L",
+    value: fmt(stats.totalRealizedPnL),
+    color: pnlColor(stats.totalRealizedPnL)
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Win Rate",
+    value: stats.winRate.toFixed(1) + "%",
+    sub: stats.closedCount + " closed trades"
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Expectancy",
+    value: fmt(stats.expectancy),
+    color: pnlColor(stats.expectancy),
+    sub: "per trade"
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Avg Hold",
+    value: Math.round(stats.avgHold) + "d"
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Open Positions",
+    value: String(stats.openPositions),
+    sub: fmt(stats.openCost) + " deployed"
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Total Brokerage",
+    value: fmt(stats.totalBrokerage),
+    sub: stats.brokerageOfGross.toFixed(3) + "% of turnover",
+    color: "#f59e0b"
+  })), analysis.monthlyPnL.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "chart-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "chart-title"
+  }, "Monthly Realized P&L"), /*#__PURE__*/React.createElement(ResponsiveContainer, {
+    width: "100%",
+    height: 280
+  }, /*#__PURE__*/React.createElement(ComposedChart, {
+    data: analysis.monthlyPnL,
+    margin: {
+      top: 8,
+      right: 20,
+      bottom: 0,
+      left: 10
+    }
+  }, /*#__PURE__*/React.createElement(CartesianGrid, {
+    strokeDasharray: "3 3",
+    stroke: "#1e293b"
+  }), /*#__PURE__*/React.createElement(XAxis, {
+    dataKey: "month",
+    tick: {
+      fill: "#94a3b8",
+      fontSize: 11
+    },
+    tickFormatter: fmtMonth
+  }), /*#__PURE__*/React.createElement(YAxis, {
+    tick: {
+      fill: "#94a3b8",
+      fontSize: 11
+    },
+    tickFormatter: v => (v >= 0 ? "$" : "-$") + Math.abs(v).toLocaleString()
+  }), /*#__PURE__*/React.createElement(Tooltip, {
+    contentStyle: {
+      background: "#1e293b",
+      border: "1px solid #334155",
+      borderRadius: 6,
+      fontSize: 12
+    },
+    formatter: (v, name) => [fmt(v), name === "realizedPnL" ? "P&L" : name === "cumulative" ? "Cumulative" : name],
+    labelFormatter: fmtMonth
+  }), /*#__PURE__*/React.createElement(Bar, {
+    dataKey: "realizedPnL",
+    name: "Monthly P&L",
+    radius: [3, 3, 0, 0]
+  }, analysis.monthlyPnL.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
+    key: i,
+    fill: d.realizedPnL >= 0 ? "#22c55e" : "#ef4444",
+    fillOpacity: 0.8
+  }))), /*#__PURE__*/React.createElement(Line, {
+    type: "monotone",
+    dataKey: "cumulative",
+    name: "Cumulative",
+    stroke: "#60a5fa",
+    strokeWidth: 2,
+    dot: false
+  })))), analysis.monthlyPnL.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "table-wrap"
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Month"), /*#__PURE__*/React.createElement("th", null, "Trades"), /*#__PURE__*/React.createElement("th", null, "Win Rate"), /*#__PURE__*/React.createElement("th", null, "P&L"), /*#__PURE__*/React.createElement("th", null, "Brokerage"), /*#__PURE__*/React.createElement("th", null, "Cumulative"))), /*#__PURE__*/React.createElement("tbody", null, analysis.monthlyPnL.map((m, i) => /*#__PURE__*/React.createElement("tr", {
+    key: i,
+    className: i % 2 === 0 ? "even" : "odd"
+  }, /*#__PURE__*/React.createElement("td", null, fmtMonth(m.month)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, m.trades), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, m.winRate, "%"), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: pnlColor(m.realizedPnL)
+    }
+  }, fmt(m.realizedPnL)), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: "#f59e0b"
+    }
+  }, fmt(m.brokerage)), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: pnlColor(m.cumulative)
+    }
+  }, fmt(m.cumulative)))))))), tab === "positions" && /*#__PURE__*/React.createElement("div", {
+    className: "content"
+  }, analysis.openPositions.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "empty"
+  }, "No open positions \u2014 all trades are closed.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "table-wrap"
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, [["ticker", "Ticker"], ["company", "Company"], ["units", "Units"], ["avgCost", "Avg Cost"], ["totalCost", "Total Cost"], ["lotCount", "Lots"], ["firstBuy", "First Buy"]].map(([k, h]) => /*#__PURE__*/React.createElement(SortTh, {
+    key: k,
+    k: k,
+    label: h,
+    sortConfig: sortConfig,
+    onSort: onSort
+  })))), /*#__PURE__*/React.createElement("tbody", null, doSort(analysis.openPositions, "totalCost").map((p, i) => /*#__PURE__*/React.createElement("tr", {
+    key: i,
+    className: i % 2 === 0 ? "even" : "odd"
+  }, /*#__PURE__*/React.createElement("td", {
+    className: "ticker-cell"
+  }, p.ticker), /*#__PURE__*/React.createElement("td", {
+    className: "company-cell"
+  }, p.company), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtNum(p.units)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmt(p.avgCost, 4)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmt(p.totalCost)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, p.lotCount), /*#__PURE__*/React.createElement("td", {
+    className: "date-cell"
+  }, p.firstBuy)))))), /*#__PURE__*/React.createElement("div", {
+    className: "table-footer"
+  }, "Total deployed: ", /*#__PURE__*/React.createElement("span", {
+    className: "mono"
+  }, fmt(analysis.openPositions.reduce((s, p) => s + p.totalCost, 0)))))), tab === "closed" && /*#__PURE__*/React.createElement("div", {
+    className: "content"
+  }, analysis.closedTrades.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "empty"
+  }, "No closed trades yet. Need both BUY and SELL for the same ticker.") : /*#__PURE__*/React.createElement("div", {
+    className: "table-wrap"
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, [["ticker", "Ticker"], ["sellDate", "Sell Date"], ["units", "Units"], ["buyPrice", "Buy"], ["sellPrice", "Sell"], ["returnPct", "Return %"], ["netPnL", "Net P&L"], ["holdingDays", "Days"], ["brokerage", "Brokerage"]].map(([k, h]) => /*#__PURE__*/React.createElement(SortTh, {
+    key: k,
+    k: k,
+    label: h,
+    sortConfig: sortConfig,
+    onSort: onSort
+  })))), /*#__PURE__*/React.createElement("tbody", null, doSort(analysis.closedTrades, "sellDate").map((c, i) => /*#__PURE__*/React.createElement("tr", {
+    key: i,
+    className: i % 2 === 0 ? "even" : "odd"
+  }, /*#__PURE__*/React.createElement("td", {
+    className: "ticker-cell"
+  }, c.ticker), /*#__PURE__*/React.createElement("td", {
+    className: "date-cell"
+  }, c.sellDate), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtNum(c.units)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmt(c.buyPrice, 4)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmt(c.sellPrice, 4)), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: pnlColor(c.returnPct)
+    }
+  }, fmtPct(c.returnPct)), /*#__PURE__*/React.createElement("td", {
+    className: "mono pnl-cell",
+    style: {
+      color: pnlColor(c.netPnL)
+    }
+  }, fmt(c.netPnL)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, c.holdingDays), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: "#f59e0b"
+    }
+  }, fmt(c.brokerage)))))))), tab === "analytics" && stats && /*#__PURE__*/React.createElement("div", {
+    className: "content"
+  }, holdingScatter.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "chart-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "chart-title"
+  }, "Holding Period vs Return %"), /*#__PURE__*/React.createElement("div", {
+    className: "chart-sub"
+  }, "Each dot = one closed trade. Below 0% = loss."), /*#__PURE__*/React.createElement(ResponsiveContainer, {
+    width: "100%",
+    height: 280
+  }, /*#__PURE__*/React.createElement(ScatterChart, {
+    margin: {
+      top: 8,
+      right: 20,
+      bottom: 4,
+      left: 10
+    }
+  }, /*#__PURE__*/React.createElement(CartesianGrid, {
+    strokeDasharray: "3 3",
+    stroke: "#1e293b"
+  }), /*#__PURE__*/React.createElement(XAxis, {
+    dataKey: "holdingDays",
+    name: "Days",
+    tick: {
+      fill: "#94a3b8",
+      fontSize: 11
+    },
+    label: {
+      value: "Holding Days",
+      position: "insideBottom",
+      offset: -2,
+      fill: "#64748b",
+      fontSize: 11
+    }
+  }), /*#__PURE__*/React.createElement(YAxis, {
+    dataKey: "returnPct",
+    name: "Return %",
+    tick: {
+      fill: "#94a3b8",
+      fontSize: 11
+    },
+    tickFormatter: v => v + "%"
+  }), /*#__PURE__*/React.createElement(Tooltip, {
+    contentStyle: {
+      background: "#1e293b",
+      border: "1px solid #334155",
+      borderRadius: 6,
+      fontSize: 12
+    },
+    formatter: (v, name) => [name === "Return %" ? v + "%" : v, name],
+    labelFormatter: () => ""
+  }), /*#__PURE__*/React.createElement(Scatter, {
+    data: holdingScatter,
+    fill: "#60a5fa"
+  }, holdingScatter.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
+    key: i,
+    fill: d.returnPct >= 0 ? "#22c55e" : "#ef4444",
+    fillOpacity: 0.6
+  })))))), sizeBuckets.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "chart-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "chart-title"
+  }, "Position Size vs Performance"), /*#__PURE__*/React.createElement("div", {
+    className: "chart-sub"
+  }, "Win rate & total P&L by initial position size."), /*#__PURE__*/React.createElement(ResponsiveContainer, {
+    width: "100%",
+    height: 220
+  }, /*#__PURE__*/React.createElement(BarChart, {
+    data: sizeBuckets,
+    margin: {
+      top: 8,
+      right: 20,
+      bottom: 0,
+      left: 10
+    }
+  }, /*#__PURE__*/React.createElement(CartesianGrid, {
+    strokeDasharray: "3 3",
+    stroke: "#1e293b"
+  }), /*#__PURE__*/React.createElement(XAxis, {
+    dataKey: "label",
+    tick: {
+      fill: "#94a3b8",
+      fontSize: 11
+    }
+  }), /*#__PURE__*/React.createElement(YAxis, {
+    yAxisId: "pct",
+    tick: {
+      fill: "#94a3b8",
+      fontSize: 11
+    },
+    tickFormatter: v => v + "%"
+  }), /*#__PURE__*/React.createElement(YAxis, {
+    yAxisId: "pnl",
+    orientation: "right",
+    tick: {
+      fill: "#94a3b8",
+      fontSize: 11
+    },
+    tickFormatter: v => "$" + v.toLocaleString()
+  }), /*#__PURE__*/React.createElement(Tooltip, {
+    contentStyle: {
+      background: "#1e293b",
+      border: "1px solid #334155",
+      borderRadius: 6,
+      fontSize: 12
+    }
+  }), /*#__PURE__*/React.createElement(Bar, {
+    yAxisId: "pct",
+    dataKey: "winRate",
+    name: "Win Rate %",
+    fill: "#60a5fa",
+    radius: [3, 3, 0, 0],
+    fillOpacity: 0.7
+  }), /*#__PURE__*/React.createElement(Bar, {
+    yAxisId: "pnl",
+    dataKey: "totalPnL",
+    name: "Total P&L",
+    radius: [3, 3, 0, 0]
+  }, sizeBuckets.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
+    key: i,
+    fill: d.totalPnL >= 0 ? "#22c55e" : "#ef4444",
+    fillOpacity: 0.7
+  })))))), tickerStatsArr.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "chart-title",
+    style: {
+      marginTop: 16,
+      marginBottom: 8
+    }
+  }, "Ticker Performance (Closed Trades)"), /*#__PURE__*/React.createElement("div", {
+    className: "table-wrap"
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, [["ticker", "Ticker"], ["trades", "Trades"], ["winRate", "Win %"], ["avgPnL", "Avg P&L"], ["totalPnL", "Total P&L"], ["totalBrokerage", "Brokerage"], ["avgHold", "Avg Hold"]].map(([k, h]) => /*#__PURE__*/React.createElement(SortTh, {
+    key: k,
+    k: k,
+    label: h,
+    sortConfig: sortConfig,
+    onSort: onSort
+  })))), /*#__PURE__*/React.createElement("tbody", null, doSort(tickerStatsArr, "totalPnL").map((ts, i) => /*#__PURE__*/React.createElement("tr", {
+    key: i,
+    className: i % 2 === 0 ? "even" : "odd"
+  }, /*#__PURE__*/React.createElement("td", {
+    className: "ticker-cell"
+  }, ts.ticker), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, ts.trades), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, ts.winRate, "%"), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: pnlColor(ts.avgPnL)
+    }
+  }, fmt(ts.avgPnL)), /*#__PURE__*/React.createElement("td", {
+    className: "mono pnl-cell",
+    style: {
+      color: pnlColor(ts.totalPnL)
+    }
+  }, fmt(ts.totalPnL)), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: "#f59e0b"
+    }
+  }, fmt(ts.totalBrokerage)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, ts.avgHold, "d"))))))), /*#__PURE__*/React.createElement("div", {
+    className: "chart-card",
+    style: {
+      marginTop: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "chart-title"
+  }, "Brokerage Drag"), /*#__PURE__*/React.createElement("div", {
+    className: "brokerage-grid"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "brok-label"
+  }, "Total Brokerage Paid"), /*#__PURE__*/React.createElement("div", {
+    className: "brok-value"
+  }, fmt(stats.totalBrokerage))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "brok-label"
+  }, "% of Gross Turnover"), /*#__PURE__*/React.createElement("div", {
+    className: "brok-value"
+  }, stats.brokerageOfGross.toFixed(3), "%")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "brok-label"
+  }, "Brokerage vs Realized P&L"), /*#__PURE__*/React.createElement("div", {
+    className: "brok-value",
+    style: {
+      color: stats.totalRealizedPnL !== 0 ? Math.abs(stats.totalBrokerage / stats.totalRealizedPnL) > 0.5 ? "#ef4444" : "#22c55e" : "#94a3b8"
+    }
+  }, stats.totalRealizedPnL !== 0 ? (Math.abs(stats.totalBrokerage / stats.totalRealizedPnL) * 100).toFixed(1) + "%" : "\u2014"), stats.totalRealizedPnL !== 0 && Math.abs(stats.totalBrokerage / stats.totalRealizedPnL) > 0.5 && /*#__PURE__*/React.createElement("div", {
+    className: "brok-warn"
+  }, "\u26A0", " Brokerage consuming >50% of P&L"))))), tab === "activity" && analysis.monthlyActivity && /*#__PURE__*/React.createElement("div", {
+    className: "content"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "table-wrap"
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Month"), /*#__PURE__*/React.createElement("th", null, "Buys"), /*#__PURE__*/React.createElement("th", null, "Sells"), /*#__PURE__*/React.createElement("th", null, "Total"), /*#__PURE__*/React.createElement("th", null, "Buy Value"), /*#__PURE__*/React.createElement("th", null, "Sell Value"), /*#__PURE__*/React.createElement("th", null, "Net Flow"), /*#__PURE__*/React.createElement("th", null, "Brokerage"), /*#__PURE__*/React.createElement("th", null, "Tickers"), /*#__PURE__*/React.createElement("th", null, "Names"))), /*#__PURE__*/React.createElement("tbody", null, analysis.monthlyActivity.map((m, i) => {
+    const netFlow = m.sellValue - m.buyValue;
+    return /*#__PURE__*/React.createElement("tr", {
+      key: i,
+      className: i % 2 === 0 ? "even" : "odd"
+    }, /*#__PURE__*/React.createElement("td", null, fmtMonth(m.month)), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, m.buys), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, m.sells), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, m.totalTrades), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmt(m.buyValue)), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmt(m.sellValue)), /*#__PURE__*/React.createElement("td", {
+      className: "mono",
+      style: {
+        color: pnlColor(netFlow)
+      }
+    }, fmt(netFlow)), /*#__PURE__*/React.createElement("td", {
+      className: "mono",
+      style: {
+        color: "#f59e0b"
+      }
+    }, fmt(m.brokerage)), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, m.uniqueTickers), /*#__PURE__*/React.createElement("td", {
+      className: "tickers-cell"
+    }, m.tickers));
+  }))))));
+}
+
+// ================================================================
+//  MOUNT
+// ================================================================
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(/*#__PURE__*/React.createElement(TradeDashboard, null));
+  </script>
+</body>
+</html>
